@@ -1,0 +1,30 @@
+title: "Variant B - Multi-region AWS EKS (primary + secondaries)"
+nodes:
+  - {id: r53, label: "Route 53\nlatency routing", col: 0, row: 1, color: gray}
+  - {id: okta, label: "Okta OIDC/SAML\n+ SCIM", col: 0, row: 0, color: blue}
+  - {id: p_app, label: "us-east-1 PRIMARY\nEKS pods multi-AZ (ALB)\nruns all bg jobs", col: 1, row: 0, color: green, h: 110}
+  - {id: p_pg, label: "RDS PG Multi-AZ\n+ DB_READ_REPLICAS", col: 1, row: 2, color: orange}
+  - {id: p_redis, label: "ElastiCache Redis\nprimary+standby", col: 2, row: 2, color: orange}
+  - {id: kms, label: "AWS KMS / SSM\nroot key + creds", col: 2, row: 0, color: red}
+  - {id: eu_app, label: "eu-west-1 SECONDARY\nEKS pods, local reads\nINFISICAL_PRIMARY_INSTANCE_URL", col: 3, row: 0, color: green, h: 110}
+  - {id: eu_pg, label: "RDS cross-region\nread replica (EU)", col: 3, row: 2, color: orange}
+  - {id: ap_app, label: "ap-southeast-2 SECONDARY\nEKS pods, local reads", col: 4, row: 0, color: green, h: 110}
+  - {id: ap_pg, label: "RDS cross-region\nread replica (AP)", col: 4, row: 2, color: orange}
+  - {id: clusters, label: "300 svcs: K8s Operator\nKubernetes Auth", col: 0, row: 2, color: blue}
+  - {id: dd, label: "Datadog\naudit + metrics", col: 2, row: 3, color: purple}
+edges:
+  - {from: okta, to: p_app, label: SSO, dashed: true}
+  - {from: r53, to: p_app}
+  - {from: r53, to: eu_app, dashed: true}
+  - {from: clusters, to: r53, label: "reads"}
+  - {from: p_app, to: p_pg}
+  - {from: p_app, to: p_redis}
+  - {from: p_app, to: kms}
+  - {from: p_pg, to: eu_pg, label: "async <1s"}
+  - {from: p_pg, to: ap_pg, label: "async"}
+  - {from: eu_app, to: eu_pg}
+  - {from: ap_app, to: ap_pg}
+  - {from: eu_app, to: p_app, label: "writes proxied", dashed: true}
+  - {from: p_app, to: dd, label: audit}
+notes:
+  - {text: "Caveat: replicas hold ALL data. Strict EU residency => separate EU instance. DR = promote replica + repoint config.", col: 0, row: 3}

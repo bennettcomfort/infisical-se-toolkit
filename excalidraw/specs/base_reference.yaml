@@ -1,0 +1,30 @@
+title: "Infisical Self-Hosted - Base Reference Architecture (HA, single region)"
+nodes:
+  - {id: users, label: "Engineers (UI/CLI)\nSSO: SAML/OIDC + SCIM", col: 0, row: 0, color: blue}
+  - {id: idp, label: "IdP (Okta/Entra/Ping)\ngroups -> roles", col: 0, row: 1, color: blue}
+  - {id: ci, label: "CI/CD (GH Actions)\nOIDC auth", col: 0, row: 2, color: blue}
+  - {id: lb, label: "LB / Ingress (TLS)\ninternal CA, WAF", col: 1, row: 0, color: gray}
+  - {id: app, label: "Infisical pods (stateless)\n3 AZs, HPA 2..N\n2-4 vCPU / 4-8 GB", col: 2, row: 0, color: green, h: 110}
+  - {id: kms, label: "Root key\nENCRYPTION_KEY | HSM | KMS", col: 3, row: 0, color: red}
+  - {id: pg, label: "PostgreSQL HA\nprimary+standby+read reps\nPITR backups", col: 2, row: 2, color: orange, h: 100}
+  - {id: redis, label: "Redis (Sentinel/managed)\nnoeviction + AOF", col: 3, row: 2, color: orange}
+  - {id: gw, label: "Gateway pool\n(private nets, mTLS/relay)", col: 3, row: 1, color: red}
+  - {id: targets, label: "Private DBs / clouds\nrotation + dynamic secrets", col: 4, row: 1, color: gray}
+  - {id: k8s, label: "K8s Operator / Agent\nK8s/AWS IAM auth", col: 1, row: 2, color: blue}
+  - {id: siem, label: "SIEM (Splunk/Datadog)\naudit log stream", col: 4, row: 0, color: purple}
+  - {id: obs, label: "OTel -> Prometheus/Grafana", col: 4, row: 2, color: purple}
+  - {id: dr, label: "DR: snapshots + async replica\n(other region/DC)", col: 2, row: 3, color: gray}
+edges:
+  - {from: users, to: lb, label: HTTPS}
+  - {from: users, to: idp, label: SSO, dashed: true}
+  - {from: ci, to: lb, label: "OIDC token"}
+  - {from: k8s, to: lb, label: "machine identity"}
+  - {from: lb, to: app}
+  - {from: app, to: kms, label: "unwrap root key"}
+  - {from: app, to: pg, label: SQL}
+  - {from: app, to: redis, label: "queue/cache"}
+  - {from: app, to: gw}
+  - {from: gw, to: targets}
+  - {from: app, to: siem, label: audit}
+  - {from: app, to: obs, dashed: true}
+  - {from: pg, to: dr, label: "WAL/PITR"}

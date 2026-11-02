@@ -1,0 +1,28 @@
+title: "Variant A - Air-gapped Regulated (FIPS + HSM, on-prem DC1/DC2)"
+nodes:
+  - {id: users, label: "Engineers\nPing SAML / AD LDAP\n+ SCIM", col: 0, row: 0, color: blue}
+  - {id: reg, label: "Internal registry\n(Harbor/Artifactory)\ninfisical-fips image + Helm", col: 0, row: 2, color: gray, h: 100}
+  - {id: lb, label: "Internal LB\nbank CA cert", col: 1, row: 0, color: gray}
+  - {id: app, label: "Infisical FIPS pods\nOpenShift/K8s, 3 failure domains\nOffline LICENSE_KEY", col: 2, row: 0, color: green, h: 110}
+  - {id: hsm, label: "HSM HA pair (Luna)\nPKCS#11 root key", col: 3, row: 0, color: red}
+  - {id: pg, label: "PostgreSQL Patroni\nsync standby DC1\nWAL archive/PITR", col: 2, row: 2, color: orange, h: 100}
+  - {id: pg2, label: "Async replica DC2\n(DR promote)", col: 3, row: 3, color: orange}
+  - {id: redis, label: "Redis Sentinel\nnoeviction + AOF", col: 3, row: 2, color: orange}
+  - {id: gw, label: "Gateway (direct/mTLS)\nrestricted segments", col: 3, row: 1, color: red}
+  - {id: dbs, label: "Core banking DBs\nrotation/dynamic creds", col: 4, row: 1, color: gray}
+  - {id: consumers, label: "K8s Operator + Agent\non RHEL VMs", col: 1, row: 2, color: blue}
+  - {id: siem, label: "On-prem Splunk/QRadar\n7-yr retention", col: 4, row: 0, color: purple}
+edges:
+  - {from: users, to: lb, label: HTTPS}
+  - {from: reg, to: app, label: "image pull", dashed: true}
+  - {from: lb, to: app}
+  - {from: app, to: hsm, label: PKCS11}
+  - {from: app, to: pg}
+  - {from: app, to: redis}
+  - {from: pg, to: pg2, label: "async WAL"}
+  - {from: app, to: gw, label: mTLS}
+  - {from: gw, to: dbs}
+  - {from: consumers, to: lb}
+  - {from: app, to: siem, label: "audit stream"}
+notes:
+  - {text: "No internet egress. Postgres audit storage disabled; SIEM is the system of record.", col: 0, row: 3}
